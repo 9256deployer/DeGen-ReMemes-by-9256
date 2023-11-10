@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.8.0/p5.js"></script>
+  <style>body {
+    background-color: black;
+    margin: 0;
+    overflow: hidden;
+  }
+  
+  h5 {
+    background-color: transparent;
+    padding: 10px; 
+    margin: 0; 
+  }</style>
+  <meta charset="utf-8" />
+</head>
+<body>
+  <div id="content">
+    <main></main>
+    <div id="slider-container"></div>
+  </div>
+  <script>
+    let quadrati = [];
+let colorsMatrix = [];
+let img;
+let step = 40;
+
+let zSlider, dimensioneSlider, profonditaSlider, velocitaSlider;
+let zVisualeSlider, maxQuadratiSlider, sogliaZSlider;
+let deltaVelocitaSlider;
+let deltaDimensioneSlider; 
+let deltaProfonditaSlider; 
+
+
+function preload() {
+    img = loadImage('https://arweave.net/BtNZDd6hQN87QvfHdvLJvTCD_T5M7NTIxnwECOczCIw');}
+
+function setup() {
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    colorsMatrix = getColorsMatrix(img, step);
+
+    createElement('h5', 'Dimensions').position(10, 20).style('color', 'white');
+    dimensioneSlider = createSlider(1, 150, 20, 1);
+    dimensioneSlider.position(100, 30);
+  
+   createElement('h5','Depth').position(10, 40).style('color', 'white');
+    profonditaSlider = createSlider(20, 500, 300, 10);
+    profonditaSlider.position(100, 50);
+  
+  createElement('h5', 'Velocity').position(10, 60).style('color', 'white');
+    velocitaSlider = createSlider(2, 100, 2, 2);
+    velocitaSlider.position(100, 70);
+  
+     createElement('h5', 'Camera pos').position(10, 80).style('color', 'white');
+    zVisualeSlider = createSlider(2000, 6800, 3800, 100);
+    zVisualeSlider.position(100, 90);
+  
+   createElement('h5', 'No. elements').position(10, 100).style('color', 'white');
+    maxQuadratiSlider = createSlider(300, 5000, 4000, 20);
+    maxQuadratiSlider.position(100, 110);
+  
+   createElement('h5', 'Threshold Z').position(10, 120).style('color', 'white');
+    sogliaZSlider = createSlider(10, 1000, 490, 10);
+    sogliaZSlider.position(100, 130);
+  
+   createElement('h5', 'Δ Velocity').position(10, 140).style('color', 'white');
+    deltaVelocitaSlider = createSlider(0, 100, 58, 1);
+    deltaVelocitaSlider.position(100, 150); 
+  
+   createElement('h5', 'Δ Dimensions').position(10, 160).style('color', 'white');
+    deltaDimensioneSlider = createSlider(0, 400, 45, 1);
+    deltaDimensioneSlider.position(100, 170);
+  
+   createElement('h5', 'Δ Depth').position(10, 180).style('color', 'white');
+    deltaProfonditaSlider = createSlider(0, 400, 180, 1);
+    deltaProfonditaSlider.position(100, 190);
+  
+
+    let zVisuale = zVisualeSlider.value();
+    camera(0, 0, zVisuale, 0, 0, 0, 0, 1, 0);
+}
+
+function draw() {
+    background(0);
+
+   let zVisuale = zVisualeSlider.value();
+    camera(0, 0, zVisuale, 0, 0, 0, 0, 1, 0);
+  
+    for (let i = quadrati.length - 1; i >= 0; i--) {
+        quadrati[i].aggiorna();
+        quadrati[i].disegna();
+
+        if (quadrati[i].z > sogliaZSlider.value()) {
+            quadrati.splice(i, 1);
+        }
+    }
+
+    while (quadrati.length < maxQuadratiSlider.value()) {
+        let x = floor(random(0, img.width / step)) * step - img.width / 2;
+        let y = floor(random(0, img.height / step)) * step - img.height / 2;
+        creaEAggiungiQuadrato(x, y);
+    }
+}
+
+function creaEAggiungiQuadrato(x, y) {
+    let xIdx = floor(x + img.width / 2) / step;
+    let yIdx = floor(y + img.height / 2) / step;
+
+    if (colorsMatrix[yIdx] && colorsMatrix[yIdx][xIdx]) {
+        let nuovoQuadrato = new Quadrato(
+        x, 
+        y, 
+        deltaVelocitaSlider.value(),
+        deltaDimensioneSlider.value(),
+        deltaProfonditaSlider.value()
+    );
+    quadrati.push(nuovoQuadrato);
+    }
+}
+
+function getColorsMatrix(image, step) {
+    img.loadPixels();
+    let matrix = [];
+    for (let y = 0; y < image.height; y += step) {
+        let row = [];
+        for (let x = 0; x < image.width; x += step) {
+            let idx = 4 * (y * image.width + x);
+            let col = [img.pixels[idx], img.pixels[idx + 1], img.pixels[idx + 2]];
+            row.push(col);
+        }
+        matrix.push(row);
+    }
+    return matrix;
+}
+
+class Quadrato {
+    constructor(x, y, deltaV, deltaDim, deltaProf) {
+        this.x = x;
+        this.y = y;
+        this.z = random(-20, 0);
+        let baseDimensione = dimensioneSlider.value();
+        this.dimensione = random(baseDimensione, (baseDimensione + deltaDim));
+        let baseProfondita = profonditaSlider.value();
+        this.profondita = random(baseProfondita + (baseProfondita + deltaProf));
+        let baseVelocita = velocitaSlider.value();
+        this.velocita = random (baseVelocita, (baseVelocita + deltaV));
+
+        let xIdx = floor(this.x + img.width / 2) / step;
+        let yIdx = floor(this.y + img.height / 2) / step;
+        this.col = this.getColorFromMatrix(xIdx, yIdx);
+    }
+
+    getColorFromMatrix(xIdx, yIdx) {
+        if (colorsMatrix[yIdx] && colorsMatrix[yIdx][xIdx]) {
+            return color(colorsMatrix[yIdx][xIdx]);
+        } else {
+            return color(255);
+        }
+    }
+
+    aggiorna() {
+        this.z += this.velocita;
+    }
+
+    disegna() {
+        push();
+        translate(this.x, this.y, this.z);
+        fill(this.col);
+        noStroke();
+        box(this.dimensione, this.dimensione, this.profondita);
+        pop();
+    }
+}
+function keyPressed() {
+    if (key === 'R' || key === 'r') {
+        regenerateSquares();
+    }
+}
+
+function regenerateSquares() {
+    quadrati = [];
+}
+
+  </script>
+</body>
+</html>
+
