@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.8.0/p5.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+</head>
+<body>
+<main>
+</main>
+
+<script>
+let quadrati = [];
+let colorsMatrix = [];
+let img;
+let step = 40;
+
+function preload() {
+    img = loadImage('https://arweave.net/-IvUcJzBEHlv_NMOjPdL7ClL8mCju09uek5TmilAqfM');
+}
+
+function setup() {
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    colorsMatrix = getColorsMatrix(img, step);
+
+    let zVisuale = random([3000]);
+    
+    camera(0, 0, zVisuale, 0, 0, 0, 0, 1, 0);
+}
+
+function draw() {
+    background(0);
+
+    for (let i = quadrati.length - 1; i >= 0; i--) {
+        quadrati[i].aggiorna();
+        quadrati[i].disegna();
+
+        if (quadrati[i].z > 50) {
+            quadrati.splice(i, 1);
+        }
+    }
+
+    while (quadrati.length < 3000) {
+        let x = floor(random(0, img.width / step)) * step - img.width / 2;
+        let y = floor(random(0, img.height / step)) * step - img.height / 2;
+        creaEAggiungiQuadrato(x, y);
+    }
+}
+
+function creaEAggiungiQuadrato(x, y) {
+    let xIdx = floor(x + img.width / 2) / step;
+    let yIdx = floor(y + img.height / 2) / step;
+
+    if (colorsMatrix[yIdx] && colorsMatrix[yIdx][xIdx]) {
+        let nuovoQuadrato = new Quadrato(x, y);
+        quadrati.push(nuovoQuadrato);
+    }
+}
+
+function getColorsMatrix(image, step) {
+    img.loadPixels();
+    let matrix = [];
+    for (let y = 0; y < image.height; y += step) {
+        let row = [];
+        for (let x = 0; x < image.width; x += step) {
+            let idx = 4 * (y * image.width + x);
+            let col = [img.pixels[idx], img.pixels[idx + 1], img.pixels[idx + 2]];
+            row.push(col);
+        }
+        matrix.push(row);
+    }
+    return matrix;
+}
+
+class Quadrato {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.z = random(-10, 0);
+        this.dimensione = random(30, 50);
+        this.profondita = random(10, 20);
+        this.velocita = random(5, 30);
+
+        let xIdx = floor(this.x + img.width / 2) / step;
+        let yIdx = floor(this.y + img.height / 2) / step;
+        this.col = this.getColorFromMatrix(xIdx, yIdx);
+    }
+
+    getColorFromMatrix(xIdx, yIdx) {
+        if (colorsMatrix[yIdx] && colorsMatrix[yIdx][xIdx]) {
+            return color(colorsMatrix[yIdx][xIdx][0], colorsMatrix[yIdx][xIdx][1], colorsMatrix[yIdx][xIdx][2]);
+        } else {
+            for (let yOffset = -1; yOffset <= 1; yOffset++) {
+                for (let xOffset = -1; xOffset <= 1; xOffset++) {
+                    if (colorsMatrix[yIdx + yOffset] && colorsMatrix[yIdx + yOffset][xIdx + xOffset]) {
+                        return color(colorsMatrix[yIdx + yOffset][xIdx + xOffset][0], colorsMatrix[yIdx + yOffset][xIdx + xOffset][1], colorsMatrix[yIdx + yOffset][xIdx + xOffset][2]);
+                    }
+                }
+            }
+        }
+        return color(0);
+    }
+
+    aggiorna() {
+        this.z += this.velocita;
+    }
+
+    disegna() {
+        push();
+        noStroke();
+        translate(this.x, this.y, this.z);
+        fill(this.col);
+        box(this.dimensione, this.dimensione, this.profondita);
+        pop();
+    }
+}
+
+function keyPressed() {
+  if (key === 'R' || key === 'r') {
+    location.reload(); 
+  } else if (key === 'J' || key === 'j') {
+    saveCanvas('screenshot', 'jpg');
+  }
+}
+
+</script>
+</body>
+</html>
